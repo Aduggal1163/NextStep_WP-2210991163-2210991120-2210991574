@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import dbconnect from './DB/dbconnect.js';
 import dotenv from "dotenv";
@@ -29,6 +30,23 @@ const io = new Server(server, {
     origin: process.env.SOCKET_CORS_ORIGIN || "http://localhost:5173",
     methods: ["GET", "POST"],
   },
+});
+
+io.use((socket, next) => {
+  const authHeader = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+  if (authHeader) {
+    const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : authHeader;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id || decoded._id;
+      socket.userRole = decoded.role;
+    } catch (err) {
+      console.warn('Socket auth failed:', err.message);
+    }
+  }
+  next();
 });
 
 // Middleware
@@ -112,10 +130,12 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Enhanced Server + Socket.io on port ${PORT}`);
-});
+const startServer = async () => {
+  await dbconnect();
+  server.listen(PORT, () => {
+    console.log(`Enhanced Server + Socket.io on port ${PORT}`);
+    console.log('🚀 Backend ready with all new features!');
+  });
+};
 
-dbconnect();
-
-console.log('🚀 Backend ready with all new features!');
+startServer();

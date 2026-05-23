@@ -9,6 +9,7 @@ export default defineConfig({
       '/api': {
         target: 'https://nextstep-wp-2210991163-2210991120.onrender.com',
         changeOrigin: true,
+        secure: false,
       },
     },
   },
